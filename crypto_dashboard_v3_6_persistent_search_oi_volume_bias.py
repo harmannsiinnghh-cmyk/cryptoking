@@ -655,7 +655,7 @@ render_html(f"""
  {coin_card(rows[2], srmap['SOL'])}
  {liq_panel_btc(btc_lm, srmap['BTC'], rows[0]['Price'])}
 </div>
-""", height=385)
+""", height=1150)
 
 render_html(f"""
 <div class='tableBox'>

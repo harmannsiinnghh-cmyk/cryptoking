@@ -547,30 +547,38 @@ def liquidity_panel(lm, sr, price, title="₿ BTC Liquidity Map"):
 
 def search_coin(symbol, fng_val):
     sym, meta = meta_for_symbol(symbol)
+
+    # 1) Try Binance first for live futures/spot pairs
     price, chg, vol, price_src = binance_price(meta["symbol"])
 
+    # 2) Try Coinbase if available
     if price <= 0:
         cb_price = coinbase_price(meta.get("coinbase"))
         if cb_price > 0:
             price = cb_price
             price_src = "Coinbase"
 
+    # 3) CoinGecko fallback for coins not supported on Binance/Coinbase
     cg = cg_lookup(sym)
     if cg:
         try:
-            if price <= 0:
-                price = float(cg.get("current_price", 0) or 0)
+            cg_price = float(cg.get("current_price", 0) or 0)
+            cg_vol = float(cg.get("total_volume", 0) or 0)
+            cg_chg = float(cg.get("price_change_percentage_24h", 0) or 0)
+            if price <= 0 and cg_price > 0:
+                price = cg_price
                 price_src = "CoinGecko"
-            if vol <= 0:
-                vol = float(cg.get("total_volume", 0) or 0)
+            if vol <= 0 and cg_vol > 0:
+                vol = cg_vol
             if abs(chg) < 0.000001:
-                chg = float(cg.get("price_change_percentage_24h", 0) or 0)
+                chg = cg_chg
         except Exception:
             pass
 
     if price <= 0:
         return None
 
+    # Futures metrics may be unavailable for some coins; keep panel visible anyway.
     met = futures_metrics(meta["symbol"])
     lm = depth_map(sym)
     sr = sr_15m(sym, price)
@@ -750,30 +758,44 @@ m2.metric("Fear & Greed Index", f"{fng_val}/100", fng_text)
 m3.metric("Total Market Cap", fmt_money(total_mcap))
 m4.metric("24h Volume", fmt_money(total_vol))
 
-s1, s2 = st.columns([2, 1])
-with s1:
-    q = st.text_input("Search coin", placeholder="Search any crypto (BTC, ETH, SOL, DOGE, LINK...)", label_visibility="collapsed")
-with s2:
-    clicked = st.button("SEARCH CRYPTO", use_container_width=True)
-
+# ================= SEARCH PANEL =================
+# Fixed: form-based search keeps the result visible after rerun and works better on mobile.
 if "search_coin_symbol" not in st.session_state:
     st.session_state.search_coin_symbol = ""
 if "show_search_panel" not in st.session_state:
     st.session_state.show_search_panel = False
 
-if clicked and q.strip():
-    st.session_state.search_coin_symbol = q.strip()
-    st.session_state.show_search_panel = True
+with st.form("coin_search_form", clear_on_submit=False):
+    s1, s2 = st.columns([2, 1])
+    with s1:
+        q = st.text_input(
+            "Search coin",
+            value=st.session_state.search_coin_symbol,
+            placeholder="Search any crypto (BTC, ETH, SOL, DOGE, LINK, PEPE, AVAX...)",
+            label_visibility="collapsed",
+        )
+    with s2:
+        submitted = st.form_submit_button("SEARCH CRYPTO", use_container_width=True)
+
+if submitted:
+    clean_q = (q or "").strip().upper()
+    if clean_q:
+        st.session_state.search_coin_symbol = clean_q
+        st.session_state.show_search_panel = True
 
 if st.session_state.show_search_panel and st.session_state.search_coin_symbol:
-    _, close_col = st.columns([5, 1])
-    with close_col:
-        if st.button("CLOSE ✕", use_container_width=True):
+    close_col1, close_col2 = st.columns([5, 1])
+    with close_col1:
+        st.info(f"Showing result for: {st.session_state.search_coin_symbol}")
+    with close_col2:
+        if st.button("CLOSE ✕", use_container_width=True, key="close_search_panel"):
             st.session_state.show_search_panel = False
             st.session_state.search_coin_symbol = ""
+            st.rerun()
 
 if st.session_state.show_search_panel and st.session_state.search_coin_symbol:
-    d = search_coin(st.session_state.search_coin_symbol, fng_val)
+    with st.spinner(f"Loading {st.session_state.search_coin_symbol} data..."):
+        d = search_coin(st.session_state.search_coin_symbol, fng_val)
     if d:
         search_panel(d)
     else:

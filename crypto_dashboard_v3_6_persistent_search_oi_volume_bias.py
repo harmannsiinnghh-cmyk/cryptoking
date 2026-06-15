@@ -67,7 +67,7 @@ div[data-testid="stTextInput"] input{
 .score{font-size:2rem;font-weight:950;text-align:right}
 .row{display:flex;justify-content:space-between;border-bottom:1px solid rgba(123,160,210,.22);padding:5px 0;font-size:.95rem}
 .source{font-size:.72rem;color:#79b8ff;margin-top:9px}
-.tableBox{background:linear-gradient(180deg,#0e1b2e,#071320);border:1px solid #294b76;border-radius:11px;margin-top:9px;padding:9px}
+.tableBox{background:linear-gradient(180deg,#0e1b2e,#071320);border:1px solid #294b76;border-radius:11px;margin-top:9px;padding:9px;overflow-x:auto}
 .title{font-size:1.05rem;font-weight:950;margin-bottom:8px}
 table{width:100%;border-collapse:collapse;font-size:.88rem}
 th,td{border:1px solid rgba(92,130,176,.32);padding:8px;text-align:center}
@@ -95,6 +95,8 @@ td{text-align:center}
 
 # ================= HELPERS =================
 def render_html(html, height=800):
+    # Mobile fix: render HTML directly in Streamlit instead of iframe components.html.
+    # This prevents iPhone/Safari overlay/cut-off issues for liquidity and tables.
     inner_css = """
     <style>
     html,body{margin:0!important;background:#06101b!important;color:#eaf6ff!important;font-family:Inter,Segoe UI,Arial,sans-serif!important;}
@@ -128,6 +130,7 @@ def render_html(html, height=800):
     .liqPrice{font-size:1.35rem!important;font-weight:950!important;margin:7px 0!important;color:#fff!important}
     .levelRows{display:grid!important;grid-template-columns:1fr 1fr!important;gap:8px!important;margin-top:9px!important}
     .levelMini{border:1px solid rgba(92,130,176,.32)!important;border-radius:8px!important;padding:8px!important;background:#071322!important;color:#eaf6ff!important}
+    .tableBox{overflow-x:auto!important}
     .searchResult{margin:8px 0 10px 0!important;border-color:#3b6eaa!important}
     .searchGrid{display:grid!important;grid-template-columns:1fr 1fr 1fr 1.3fr!important;gap:9px!important}
     .footer{font-size:.75rem!important;color:#a7c8f5!important;margin:7px 0!important}
@@ -138,7 +141,7 @@ def render_html(html, height=800):
     @media(max-width:900px){.main{grid-template-columns:1fr!important}.searchGrid{grid-template-columns:1fr!important}.liqGrid{grid-template-columns:1fr!important}table{font-size:.82rem!important}.coin{min-height:auto!important}}
     </style>
     """
-    components.html(inner_css + html, height=height, scrolling=True)
+    st.markdown(inner_css + html, unsafe_allow_html=True)
 
 def jget(url, params=None, timeout=8):
     try:
@@ -655,7 +658,7 @@ render_html(f"""
  {coin_card(rows[2], srmap['SOL'])}
  {liq_panel_btc(btc_lm, srmap['BTC'], rows[0]['Price'])}
 </div>
-""", height=1150)
+""", height=385)
 
 render_html(f"""
 <div class='tableBox'>

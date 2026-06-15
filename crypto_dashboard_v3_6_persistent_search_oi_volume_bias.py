@@ -1,6 +1,7 @@
 import time
 from datetime import datetime
 
+import pandas as pd
 import requests
 import streamlit as st
 
@@ -32,29 +33,17 @@ st.markdown(
     """
 <style>
 #MainMenu, footer, header {visibility:hidden;height:0}
-.block-container{padding:.55rem .65rem .4rem .65rem!important;max-width:100%!important}
+.block-container{padding:.75rem .85rem .65rem .85rem!important;max-width:100%!important}
 html,body,.stApp{background:#06101b!important;color:#eaf6ff!important}
 *{font-family:Inter,Segoe UI,Arial,sans-serif}
-h1{font-size:1.45rem!important;margin:0!important;line-height:1.2!important}
-.note{font-size:.72rem;color:#a7c8f5;margin-top:3px}
-.badge{border:1px solid #365b8e;border-radius:10px;padding:7px 10px;background:#0c1728;font-weight:800;text-align:center}
-.card,.coinCard,.liqCard,.tableBox,.summaryBox,.searchBox{
-    background:linear-gradient(180deg,#0e1b2e,#071320);
-    border:1px solid #294b76;
-    border-radius:12px;
-    padding:11px;
-    box-shadow:0 0 18px rgba(0,0,0,.22);
-    color:#eaf6ff;
-    margin-bottom:9px;
+h1{font-size:1.45rem!important;margin-bottom:.25rem!important}
+[data-testid="stMetricValue"]{font-weight:900}
+[data-testid="stMetricLabel"]{font-weight:800;color:#b7d6ff}
+[data-testid="stVerticalBlockBorderWrapper"]{
+    background:linear-gradient(180deg,#0e1b2e,#071320)!important;
+    border-color:#294b76!important;
+    border-radius:14px!important;
 }
-.smallLabel{color:#b7d6ff;font-size:.82rem;font-weight:800}
-.bigNum{font-size:1.55rem;font-weight:950;line-height:1.1}
-.price{font-size:1.35rem;font-weight:950;margin-top:4px}
-.score{font-size:1.75rem;font-weight:950;text-align:right}
-.title{font-size:1.04rem;font-weight:950;margin-bottom:8px}
-.row{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid rgba(123,160,210,.22);padding:5px 0;font-size:.92rem}
-.source{font-size:.72rem;color:#79b8ff;margin-top:8px}
-.green{color:#20e878!important}.red{color:#ff465a!important}.yellow{color:#ffd24d!important}.muted{color:#9bb8da!important}
 div[data-testid="stTextInput"] input{
     background:#f5f7fb!important;color:#06101b!important;border-radius:9px!important;
     font-weight:850!important;font-size:1rem!important;height:43px!important;
@@ -64,31 +53,13 @@ div[data-testid="stTextInput"] input{
     background:linear-gradient(90deg,#006dff,#7b2cff,#ff00b8)!important;
     color:white!important;font-size:1rem!important;font-weight:950!important;text-align:center!important;
 }
-.metricGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:9px 0}
-.coinGrid{display:grid;grid-template-columns:1fr 1fr 1fr 2fr;gap:9px;align-items:stretch}
-.liqGrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-.levelGrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:9px}
-.miniBox{border:1px solid rgba(92,130,176,.32);border-radius:9px;padding:9px;background:#071322}
-.liqGreen{background:linear-gradient(180deg,rgba(0,255,100,.14),rgba(0,80,50,.08));border-color:#138a52}
-.liqRed{background:linear-gradient(180deg,rgba(255,30,60,.14),rgba(80,0,30,.08));border-color:#9b2635}
-.biasBadge{display:inline-block;border-radius:7px;padding:2px 7px;font-size:.76rem;font-weight:950;margin-left:5px}
-.bullBadge{background:rgba(32,232,120,.12);color:#20e878;border:1px solid rgba(32,232,120,.35)}
-.bearBadge{background:rgba(255,70,90,.12);color:#ff465a;border:1px solid rgba(255,70,90,.35)}
-.neutralBadge{background:rgba(255,210,77,.12);color:#ffd24d;border:1px solid rgba(255,210,77,.35)}
-.dataframe tbody tr th{display:none}
-.dataframe thead tr th:first-child{display:none}
-[data-testid="stDataFrameResizable"]{border-radius:12px!important}
+.small-note{color:#9bb8da;font-size:.75rem}
+.green{color:#20e878!important;font-weight:900}
+.red{color:#ff465a!important;font-weight:900}
+.yellow{color:#ffd24d!important;font-weight:900}
 @media(max-width:900px){
-    .metricGrid{grid-template-columns:1fr 1fr}
-    .coinGrid{grid-template-columns:1fr}
-    .liqGrid{grid-template-columns:1fr}
-    .levelGrid{grid-template-columns:1fr}
-    h1{font-size:1.15rem!important}
-    .bigNum{font-size:1.22rem}
-    .price{font-size:1.18rem}
-    .score{font-size:1.35rem}
-    .row{font-size:.86rem}
-    .card,.coinCard,.liqCard,.tableBox,.summaryBox,.searchBox{padding:9px}
+    h1{font-size:1.1rem!important}
+    .block-container{padding:.55rem .65rem .45rem .65rem!important}
 }
 </style>
 """,
@@ -133,50 +104,54 @@ def fmt_price(x):
     return f"{x:.5f}"
 
 
-def pct_cls(x):
-    try:
-        return "green" if float(x) >= 0 else "red"
-    except Exception:
-        return "yellow"
-
-
 def trend_arrow(v):
     try:
         v = float(v)
     except Exception:
-        return "→", "yellow"
+        return "→"
     if v > 0:
-        return "↑", "green"
+        return "↑"
     if v < 0:
-        return "↓", "red"
-    return "→", "yellow"
+        return "↓"
+    return "→"
+
+
+def cls_pct(v):
+    try:
+        return "green" if float(v) >= 0 else "red"
+    except Exception:
+        return "yellow"
+
+
+def color_text(text, color_class):
+    return f"<span class='{color_class}'>{text}</span>"
 
 
 def oi_volume_bias(oi_value, volume_value, price_change=0):
-    oi_ar, oi_c = trend_arrow(oi_value)
-    vol_ar, vol_c = trend_arrow(volume_value)
+    oi_ar = trend_arrow(oi_value)
+    vol_ar = trend_arrow(volume_value)
 
-    if oi_c == "green" and price_change >= 0:
-        oi_bias, oi_badge = "OI Bullish", "bullBadge"
-    elif oi_c == "green" and price_change < 0:
-        oi_bias, oi_badge = "OI Bearish Shorts", "bearBadge"
-    elif oi_c == "red" and price_change >= 0:
-        oi_bias, oi_badge = "Short Cover", "neutralBadge"
-    elif oi_c == "red" and price_change < 0:
-        oi_bias, oi_badge = "OI Weak", "neutralBadge"
+    if oi_ar == "↑" and price_change >= 0:
+        oi_bias = "OI Bullish"
+    elif oi_ar == "↑" and price_change < 0:
+        oi_bias = "OI Bearish Shorts"
+    elif oi_ar == "↓" and price_change >= 0:
+        oi_bias = "Short Cover"
+    elif oi_ar == "↓" and price_change < 0:
+        oi_bias = "OI Weak"
     else:
-        oi_bias, oi_badge = "OI Neutral", "neutralBadge"
+        oi_bias = "OI Neutral"
 
-    if vol_c == "green" and price_change >= 0:
-        vol_bias, vol_badge = "Vol Bullish", "bullBadge"
-    elif vol_c == "green" and price_change < 0:
-        vol_bias, vol_badge = "Vol Bearish", "bearBadge"
-    elif vol_c == "red":
-        vol_bias, vol_badge = "Vol Weak", "neutralBadge"
+    if vol_ar == "↑" and price_change >= 0:
+        vol_bias = "Vol Bullish"
+    elif vol_ar == "↑" and price_change < 0:
+        vol_bias = "Vol Bearish"
+    elif vol_ar == "↓":
+        vol_bias = "Vol Weak"
     else:
-        vol_bias, vol_badge = "Vol Neutral", "neutralBadge"
+        vol_bias = "Vol Neutral"
 
-    return oi_ar, oi_c, oi_bias, oi_badge, vol_ar, vol_c, vol_bias, vol_badge
+    return oi_ar, oi_bias, vol_ar, vol_bias
 
 
 def signal_from_score(score):
@@ -212,13 +187,6 @@ def bias_score(chg, funding, ls, taker, fng):
 def chances(score):
     up = int(max(5, min(95, score)))
     return up, 100 - up
-
-
-def html_row(left, right, right_cls=""):
-    st.markdown(
-        f"<div class='row'><span>{left}</span><span class='{right_cls}'>{right}</span></div>",
-        unsafe_allow_html=True,
-    )
 
 
 # ================= DATA =================
@@ -411,11 +379,12 @@ def depth_map(sym, depth_limit=1000):
     ]
     if cb:
         sources.append(("Coinbase", f"{COINBASE}/products/{cb}/book", {"level": 2}))
+
     last = ""
     for src, url, params in sources:
         d, e = jget(url, params, timeout=8)
         if e or not isinstance(d, dict):
-            last = f"{src}: {e}"[:70]
+            last = f"{src}: {e}"[:90]
             continue
         if "bids" not in d or "asks" not in d:
             last = f"{src}: no book"
@@ -433,7 +402,7 @@ def depth_map(sym, depth_limit=1000):
             asks = sorted(sorted(asks, key=lambda x: x[2], reverse=True)[:8], key=lambda x: x[0])
             return {"asset": asset, "mid": mid, "bids": bids, "asks": asks, "src": src, "err": ""}
         except Exception as ex:
-            last = str(ex)[:70]
+            last = str(ex)[:90]
     return {"asset": asset, "mid": 0, "bids": [], "asks": [], "src": "No source", "err": last}
 
 
@@ -467,6 +436,7 @@ def sr_15m(sym, current_price):
         return {"r1": 0, "r2": 0, "s1": 0, "s2": 0, "src": src}
     p = current_price or candles[-1]["c"]
     recent = candles[-96:]
+
     if p > 10000:
         step, min_gap = 25, 120
     elif p > 1000:
@@ -484,6 +454,7 @@ def sr_15m(sym, current_price):
             highs.append(recent[i]["h"])
         if recent[i]["l"] <= min(recent[i - 2]["l"], recent[i - 1]["l"], recent[i + 1]["l"], recent[i + 2]["l"]):
             lows.append(recent[i]["l"])
+
     if len(highs) < 2:
         highs = [x["h"] for x in recent]
     if len(lows) < 2:
@@ -506,7 +477,7 @@ def sr_15m(sym, current_price):
 
     def pick(arr):
         if not arr:
-            return (0, 0)
+            return 0, 0
         one = arr[0][0]
         two = one
         for lv, _ in arr[1:]:
@@ -535,126 +506,90 @@ def short_and_major(lm):
     return st_up, st_dn, mj_up, mj_dn
 
 
-# ================= UI RENDER =================
-def top_card(label, value, extra=""):
-    st.markdown(
-        f"<div class='card'><div class='smallLabel'>{label}</div><div class='bigNum'>{value}</div>{extra}</div>",
-        unsafe_allow_html=True,
-    )
+# ================= UI HELPERS =================
+def top_metric(label, value, delta=None):
+    with st.container(border=True):
+        st.metric(label, value, delta=delta)
 
 
-def coin_card_native(r, sr):
-    cls = "green" if r["Score"] >= 60 else "red" if r["Score"] <= 40 else "yellow"
-    with st.container():
-        st.markdown("<div class='coinCard'>", unsafe_allow_html=True)
-        left, right = st.columns([1.4, 1])
-        with left:
-            st.markdown(f"<div class='title'>{r['Icon']} {r['Asset']}</div>", unsafe_allow_html=True)
-            st.markdown(f"<div class='price'>${r['Price']:,.4f}</div>", unsafe_allow_html=True)
-            st.markdown(f"<div class='{pct_cls(r['24h %'])}'>{r['24h %']:+.2f}% (24h)</div>", unsafe_allow_html=True)
-        with right:
-            st.markdown(f"<div class='score'>{r['Score']}%</div>", unsafe_allow_html=True)
-            st.markdown(f"<div class='{cls}' style='font-weight:950;text-align:right'>{r['Bias']}</div>", unsafe_allow_html=True)
-        html_row("Funding", f"{r['Funding %']:+.5f}%", pct_cls(r["Funding %"]))
-        html_row("OI", f"{r['OI']/1_000_000:.2f}M")
-        html_row("Long/Short", f"{r['Long/Short']:.2f}")
-        html_row("Volume", fmt_money(r["Volume 24h"]))
-        html_row("Taker B/S", f"{r['Taker B/S']:.2f}")
-        html_row("15m R1/S1", f"{fmt_price(sr['r1'])} / {fmt_price(sr['s1'])}")
-        html_row("15m R2/S2", f"{fmt_price(sr['r2'])} / {fmt_price(sr['s2'])}")
-        st.markdown(f"<div class='source'>Data: {r['Source']}</div>", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-
-
-def liquidity_native(lm, sr, price, title="₿ BTC LIQUIDITY MAP"):
-    st_up, st_dn, mj_up, mj_dn = short_and_major(lm)
-    with st.container():
-        st.markdown(f"<div class='liqCard'><div class='title'>{title} <span class='muted'>(Nearest + Major)</span></div>", unsafe_allow_html=True)
-
-        c1, c2 = st.columns(2)
+def coin_card(r, sr):
+    with st.container(border=True):
+        st.subheader(f"{r['Icon']} {r['Asset']}")
+        c1, c2 = st.columns([1.5, 1])
         with c1:
-            st.markdown("<div class='miniBox'>", unsafe_allow_html=True)
-            st.markdown("<div class='smallLabel'>SHORT-TERM LIQUIDITY</div>", unsafe_allow_html=True)
-            st.markdown(f"<div class='miniBox liqGreen'><b class='green'>UP WALL</b><br><span class='price'>{fmt_price(st_up[0])} ↑</span><br>{fmt_money(st_up[2])}</div>", unsafe_allow_html=True)
-            st.markdown(f"<div class='miniBox liqRed' style='margin-top:8px'><b class='red'>DOWN WALL</b><br><span class='price'>{fmt_price(st_dn[0])} ↓</span><br>{fmt_money(st_dn[2])}</div>", unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
-
+            st.metric("Price", f"${r['Price']:,.4f}", f"{r['24h %']:+.2f}% 24h")
         with c2:
-            st.markdown("<div class='miniBox'>", unsafe_allow_html=True)
-            st.markdown("<div class='smallLabel'>MAJOR LIQUIDITY</div>", unsafe_allow_html=True)
-            st.markdown(f"<div class='miniBox liqGreen'><b class='green'>MAJOR UP</b><br><span class='price'>{fmt_price(mj_up[0])} ↑</span><br>{fmt_money(mj_up[2])}</div>", unsafe_allow_html=True)
-            st.markdown(f"<div class='miniBox liqRed' style='margin-top:8px'><b class='red'>MAJOR DOWN</b><br><span class='price'>{fmt_price(mj_dn[0])} ↓</span><br>{fmt_money(mj_dn[2])}</div>", unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
+            st.metric("Bias Score", f"{r['Score']}%", r["Bias"])
+        st.write(f"Funding: **{r['Funding %']:+.5f}%**")
+        st.write(f"OI: **{r['OI']/1_000_000:.2f}M**")
+        st.write(f"Long/Short: **{r['Long/Short']:.2f}**")
+        st.write(f"Volume: **{fmt_money(r['Volume 24h'])}**")
+        st.write(f"Taker B/S: **{r['Taker B/S']:.2f}**")
+        st.write(f"15m R1/S1: **{fmt_price(sr['r1'])} / {fmt_price(sr['s1'])}**")
+        st.write(f"15m R2/S2: **{fmt_price(sr['r2'])} / {fmt_price(sr['s2'])}**")
+        st.caption(f"Data: {r['Source']}")
 
-        up_rows = "".join([f"<div>{fmt_price(x[0])} <span class='muted'>{fmt_money(x[2])}</span></div>" for x in sorted(lm.get("asks", []), key=lambda x: x[0])[:5]])
-        dn_rows = "".join([f"<div>{fmt_price(x[0])} <span class='muted'>{fmt_money(x[2])}</span></div>" for x in sorted(lm.get("bids", []), key=lambda x: x[0], reverse=True)[:5]])
 
-        l1, l2 = st.columns(2)
-        with l1:
-            st.markdown(f"<div class='miniBox'><b class='green'>Above Price</b><br>{up_rows or 'No data'}</div>", unsafe_allow_html=True)
-        with l2:
-            st.markdown(f"<div class='miniBox'><b class='red'>Below Price</b><br>{dn_rows or 'No data'}</div>", unsafe_allow_html=True)
+def liquidity_panel(lm, sr, price, title="₿ BTC Liquidity Map"):
+    st_up, st_dn, mj_up, mj_dn = short_and_major(lm)
 
-        st.markdown(
-            f"""
-            <div class='miniBox' style='text-align:center;margin-top:9px'>
-            <b>Current Price</b><br><span class='price'>${price:,.2f}</span><br>
-            15m R1: <span class='green'>{fmt_price(sr['r1'])}</span> &nbsp;
-            R2: <span class='green'>{fmt_price(sr['r2'])}</span><br>
-            S1: <span class='red'>{fmt_price(sr['s1'])}</span> &nbsp;
-            S2: <span class='red'>{fmt_price(sr['s2'])}</span>
-            </div>
-            """,
-            unsafe_allow_html=True,
+    with st.container(border=True):
+        st.subheader(title)
+        st.caption(f"Source: {lm.get('src','N/A')} | Current: ${price:,.2f}")
+
+        a, b = st.columns(2)
+        with a:
+            st.metric("Short-Term UP Wall", fmt_price(st_up[0]), fmt_money(st_up[2]))
+            st.metric("Major UP Liquidity", fmt_price(mj_up[0]), fmt_money(mj_up[2]))
+        with b:
+            st.metric("Short-Term DOWN Wall", fmt_price(st_dn[0]), fmt_money(st_dn[2]))
+            st.metric("Major DOWN Liquidity", fmt_price(mj_dn[0]), fmt_money(mj_dn[2]))
+
+        st.write(
+            f"15m R1: **{fmt_price(sr['r1'])}** | R2: **{fmt_price(sr['r2'])}** | "
+            f"S1: **{fmt_price(sr['s1'])}** | S2: **{fmt_price(sr['s2'])}**"
         )
-        if lm.get("err"):
-            st.caption(f"Liquidity source issue: {lm.get('err')}")
-        st.markdown("</div>", unsafe_allow_html=True)
 
-
-def market_table(rows):
-    data = []
-    for i, r in enumerate(rows, 1):
-        oi_ar, oi_c, oi_bias, _, vo_ar, vo_c, vol_bias, _ = oi_volume_bias(r.get("OI Trend", 0), r.get("Vol Trend", 0), r.get("24h %", 0))
-        up, down = chances(r["Score"])
-        data.append(
-            {
-                "#": i,
-                "Coin": f"{r.get('Icon','')} {r['Asset']}",
-                "Price": f"${r['Price']:,.4f}",
-                "24h": f"{r['24h %']:+.2f}%",
-                "Volume": fmt_money(r["Volume 24h"]),
-                "Vol": f"{vo_ar} {vol_bias}",
-                "OI": f"{r['OI']/1_000_000:.2f}M",
-                "OI Bias": f"{oi_ar} {oi_bias}",
-                "Up": f"{up}%",
-                "Down": f"{down}%",
-                "Signal": signal_from_score(r["Score"]),
-            }
-        )
-    st.markdown("<div class='tableBox'><div class='title'>📈 MARKET OVERVIEW</div>", unsafe_allow_html=True)
-    st.dataframe(data, use_container_width=True, hide_index=True)
-    st.markdown("<div class='source'>Data: CoinGecko + Binance/Bybit/OKX + Coinbase</div></div>", unsafe_allow_html=True)
+        asks = [
+            {"Side": "Above", "Price": fmt_price(x[0]), "Amount": fmt_money(x[2])}
+            for x in sorted(lm.get("asks", []), key=lambda x: x[0])[:5]
+        ]
+        bids = [
+            {"Side": "Below", "Price": fmt_price(x[0]), "Amount": fmt_money(x[2])}
+            for x in sorted(lm.get("bids", []), key=lambda x: x[0], reverse=True)[:5]
+        ]
+        book_rows = asks + bids
+        if book_rows:
+            st.dataframe(book_rows, use_container_width=True, hide_index=True)
+        else:
+            st.warning("Liquidity book data not available right now.")
+            if lm.get("err"):
+                st.caption(lm["err"])
 
 
 def search_coin(symbol, fng_val):
     sym, meta = meta_for_symbol(symbol)
     price, chg, vol, ps = binance_price(meta["symbol"])
+
     if price <= 0:
         price = coinbase_price(meta.get("coinbase"))
         ps = "Coinbase" if price else ps
+
     cg = cg_symbol_lookup(sym)
     if price <= 0 and cg:
         price = float(cg.get("current_price", 0) or 0)
         chg = float(cg.get("price_change_percentage_24h", 0) or 0)
         vol = float(cg.get("total_volume", 0) or 0)
         ps = "CoinGecko"
+
     if price <= 0:
         return None
+
     met = futures_metrics(meta["symbol"])
     lm = depth_map(sym)
     sr = sr_15m(sym, price)
     sc = bias_score(chg, met["funding"], met["ls"], met["taker"], fng_val)
+
     return {
         "Asset": sym,
         "Icon": meta.get("icon", "🟡"),
@@ -673,30 +608,47 @@ def search_coin(symbol, fng_val):
     }
 
 
-def search_result_native(d):
-    oi_ar, oi_c, oi_bias, oi_badge, vo_ar, vo_c, vol_bias, vol_badge = oi_volume_bias(d["OI"], d["Volume 24h"], d["24h %"])
-    up, down = chances(d["Score"])
+def search_panel(d):
+    with st.container(border=True):
+        st.subheader(f"🔎 Search Result: {d['Asset']}")
+        oi_ar, oi_bias, vo_ar, vol_bias = oi_volume_bias(d["OI"], d["Volume 24h"], d["24h %"])
+        up, down = chances(d["Score"])
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            st.metric("Price", f"${d['Price']:,.5f}", f"{d['24h %']:+.2f}% 24h")
+            st.metric("Bias", d["Bias"], f"Score {d['Score']}%")
+        with c2:
+            st.metric("OI", f"{d['OI']/1_000_000:.2f}M", f"{oi_ar} {oi_bias}")
+            st.metric("Volume", fmt_money(d["Volume 24h"]), f"{vo_ar} {vol_bias}")
+        with c3:
+            st.metric("Up Chance", f"{up}%")
+            st.metric("Down Chance", f"{down}%")
+            st.write(f"Signal: **{signal_from_score(d['Score'])}**")
+        liquidity_panel(d["liq"], d["sr"], d["Price"], title=f"{d['Asset']} Liquidity Map")
 
-    st.markdown("<div class='searchBox'><div class='title'>🔎 Search Result: {} Full Bias Panel</div>".format(d["Asset"]), unsafe_allow_html=True)
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.markdown(f"<div class='miniBox'><div class='smallLabel'>Price / Bias</div><div class='price'>${d['Price']:,.5f}</div><div class='{pct_cls(d['24h %'])}'>{d['24h %']:+.2f}% 24h</div><div style='font-size:1.15rem;font-weight:950'>{d['Bias']}</div></div>", unsafe_allow_html=True)
-    with c2:
-        st.markdown("<div class='miniBox'><div class='smallLabel'>OI / Volume Bias</div>", unsafe_allow_html=True)
-        html_row("OI", f"{d['OI']/1_000_000:.2f}M <b class='{oi_c}'>{oi_ar}</b> <span class='biasBadge {oi_badge}'>{oi_bias}</span>")
-        html_row("Volume", f"{fmt_money(d['Volume 24h'])} <b class='{vo_c}'>{vo_ar}</b> <span class='biasBadge {vol_badge}'>{vol_bias}</span>")
-        html_row("Funding", f"{d['Funding %']:+.5f}%", pct_cls(d["Funding %"]))
-        st.markdown("</div>", unsafe_allow_html=True)
-    with c3:
-        st.markdown("<div class='miniBox'><div class='smallLabel'>Valid 15m S/R</div>", unsafe_allow_html=True)
-        html_row("R1", fmt_price(d["sr"]["r1"]), "green")
-        html_row("R2", fmt_price(d["sr"]["r2"]), "green")
-        html_row("S1", fmt_price(d["sr"]["s1"]), "red")
-        html_row("S2", fmt_price(d["sr"]["s2"]), "red")
-        st.markdown("</div>", unsafe_allow_html=True)
 
-    liquidity_native(d["liq"], d["sr"], d["Price"], title=f"{d['Asset']} LIQUIDITY MAP")
-    st.markdown(f"<div class='miniBox'><b>Signal:</b> {signal_from_score(d['Score'])} &nbsp; <span class='green'>Up {up}%</span> / <span class='red'>Down {down}%</span></div></div>", unsafe_allow_html=True)
+def market_table(rows):
+    data = []
+    for i, r in enumerate(rows, 1):
+        oi_ar, oi_bias, vo_ar, vol_bias = oi_volume_bias(r.get("OI Trend", 0), r.get("Vol Trend", 0), r.get("24h %", 0))
+        up, down = chances(r["Score"])
+        data.append(
+            {
+                "#": i,
+                "Coin": f"{r.get('Icon','')} {r['Asset']}",
+                "Price": f"${r['Price']:,.4f}",
+                "24h %": f"{r['24h %']:+.2f}%",
+                "Volume": fmt_money(r["Volume 24h"]),
+                "Vol Bias": f"{vo_ar} {vol_bias}",
+                "OI": f"{r['OI']/1_000_000:.2f}M",
+                "OI Bias": f"{oi_ar} {oi_bias}",
+                "Up": f"{up}%",
+                "Down": f"{down}%",
+                "Signal": signal_from_score(r["Score"]),
+            }
+        )
+    st.subheader("📈 Market Overview")
+    st.dataframe(data, use_container_width=True, hide_index=True)
 
 
 @st.cache_data(ttl=180, show_spinner=False)
@@ -715,36 +667,44 @@ def potential_movers():
     )
     if not isinstance(d, list):
         return []
+
     stable = {"usdt", "usdc", "dai", "fdusd", "tusd", "usde", "busd"}
     out = []
+
     for x in d:
         sym = str(x.get("symbol", "")).upper()
         if sym.lower() in stable:
             continue
+
         h1 = x.get("price_change_percentage_1h_in_currency")
         h24 = x.get("price_change_percentage_24h_in_currency")
+
         if h1 is None or h24 is None:
             continue
+
         try:
             h1 = float(h1)
             h24 = float(h24)
         except Exception:
             continue
+
         if abs(h1) <= 1.75 and float(x.get("total_volume", 0) or 0) > 20_000_000:
-            sc = 50 + (8 if h1 > 0 else -8) + (8 if h24 > 0 else -8)
+            sc = int(max(5, min(95, 50 + (8 if h1 > 0 else -8) + (8 if h24 > 0 else -8))))
+            up, down = chances(sc)
             out.append(
                 {
                     "Coin": sym,
                     "Price": f"${float(x.get('current_price', 0) or 0):,.5f}",
-                    "1h": f"{h1:+.2f}%",
-                    "24h": f"{h24:+.2f}%",
+                    "1h %": f"{h1:+.2f}%",
+                    "24h %": f"{h24:+.2f}%",
                     "Volume": fmt_money(float(x.get("total_volume", 0) or 0)),
-                    "Up": f"{chances(int(max(5, min(95, sc))))[0]}%",
-                    "Down": f"{chances(int(max(5, min(95, sc))))[1]}%",
-                    "Setup": signal_from_score(int(max(5, min(95, sc)))),
+                    "Up": f"{up}%",
+                    "Down": f"{down}%",
+                    "Setup": signal_from_score(sc),
                 }
             )
-    return sorted(out, key=lambda r: abs(float(r["1h"].replace("%", ""))))[:5]
+
+    return sorted(out, key=lambda r: abs(float(r["1h %"].replace("%", ""))))[:5]
 
 
 # ================= MAIN =================
@@ -778,38 +738,28 @@ for a, m in ASSETS.items():
 
 srmap = {r["Asset"]: sr_15m(r["Asset"], r["Price"]) for r in rows}
 btc_lm = depth_map("BTC")
+
 avg = int(sum(r["Score"] for r in rows) / len(rows))
 overall_up, overall_down = chances(avg)
 
-top_left, top_right = st.columns([3, 1])
-with top_left:
-    st.markdown(
-        f"<h1>⚡ Harmann Crypto Bias Dashboard V3.6 Persistent Search + OI Volume Bias</h1><div class='note'>Real-time Market Insights & Bias Detector | Last update {datetime.now().strftime('%H:%M:%S')}</div>",
-        unsafe_allow_html=True,
-    )
-with top_right:
-    st.markdown("<div class='badge'>⟳ Refresh: 30s</div>", unsafe_allow_html=True)
+st.title("⚡ Harmann Crypto Bias Dashboard V3.6 Persistent Search + OI Volume Bias")
+st.caption(f"Real-time Market Insights & Bias Detector | Last update {datetime.now().strftime('%H:%M:%S')} | Refresh: 30s")
 
-st.markdown("<div class='metricGrid'>", unsafe_allow_html=True)
-mc1, mc2, mc3, mc4 = st.columns(4)
-with mc1:
-    top_card("BTC Dominance", f"{btc_dom:.2f}%")
-with mc2:
-    fg_cls = "green" if fng_val >= 55 else "red" if fng_val <= 35 else "yellow"
-    top_card("Fear & Greed Index", f"{fng_val}/100", f"<div class='{fg_cls}'>{fng_text}</div>")
-with mc3:
-    top_card("Total Market Cap", fmt_money(total_mcap))
-with mc4:
-    top_card("24h Volume", fmt_money(total_vol))
-st.markdown("</div>", unsafe_allow_html=True)
+m1, m2, m3, m4 = st.columns(4)
+with m1:
+    top_metric("BTC Dominance", f"{btc_dom:.2f}%")
+with m2:
+    top_metric("Fear & Greed Index", f"{fng_val}/100", fng_text)
+with m3:
+    top_metric("Total Market Cap", fmt_money(total_mcap))
+with m4:
+    top_metric("24h Volume", fmt_money(total_vol))
 
-st.markdown("<div class='searchBox'>", unsafe_allow_html=True)
 s1, s2 = st.columns([2, 1])
 with s1:
     q = st.text_input("Search coin", placeholder="Search any crypto (BTC, ETH, SOL, DOGE, LINK...)", label_visibility="collapsed")
 with s2:
     clicked = st.button("SEARCH CRYPTO", use_container_width=True)
-st.markdown("</div>", unsafe_allow_html=True)
 
 if "search_coin_symbol" not in st.session_state:
     st.session_state.search_coin_symbol = ""
@@ -830,41 +780,38 @@ if st.session_state.show_search_panel and st.session_state.search_coin_symbol:
 if st.session_state.show_search_panel and st.session_state.search_coin_symbol:
     d = search_coin(st.session_state.search_coin_symbol, fng_val)
     if d:
-        search_result_native(d)
+        search_panel(d)
     else:
         st.warning("Coin data not found. Try DOGE, LINK, XRP, AVAX, PEPE, BTC, ETH, SOL.")
 
-st.markdown("<div class='coinGrid'>", unsafe_allow_html=True)
 c1, c2, c3, c4 = st.columns([1, 1, 1, 2])
 with c1:
-    coin_card_native(rows[0], srmap["BTC"])
+    coin_card(rows[0], srmap["BTC"])
 with c2:
-    coin_card_native(rows[1], srmap["ETH"])
+    coin_card(rows[1], srmap["ETH"])
 with c3:
-    coin_card_native(rows[2], srmap["SOL"])
+    coin_card(rows[2], srmap["SOL"])
 with c4:
-    liquidity_native(btc_lm, srmap["BTC"], rows[0]["Price"])
-st.markdown("</div>", unsafe_allow_html=True)
+    liquidity_panel(btc_lm, srmap["BTC"], rows[0]["Price"])
 
 market_table(rows)
 
+st.subheader("🚀 Potential Movers")
 movers = potential_movers()
-st.markdown("<div class='tableBox'><div class='title'>🚀 POTENTIAL MOVERS <span class='muted'>(Next Move Scanner)</span></div>", unsafe_allow_html=True)
-st.dataframe(movers, use_container_width=True, hide_index=True)
-st.markdown("</div>", unsafe_allow_html=True)
+if movers:
+    st.dataframe(movers, use_container_width=True, hide_index=True)
+else:
+    st.info("Potential movers data not available right now.")
 
-st.markdown(
-    f"""
-<div class='summaryBox' style='text-align:center'>
- <div class='title'>🎯 MARKET BIAS SUMMARY</div>
- <span class='green' style='font-size:1.45rem;font-weight:950'>Up Chance {overall_up}%</span>
- &nbsp;&nbsp;
- <span class='red' style='font-size:1.45rem;font-weight:950'>Down Chance {overall_down}%</span>
- <div style='font-size:1.6rem;font-weight:950;margin-top:8px'>{signal_from_score(avg)}</div>
-</div>
-""",
-    unsafe_allow_html=True,
-)
+with st.container(border=True):
+    st.subheader("🎯 Market Bias Summary")
+    s1, s2, s3 = st.columns(3)
+    with s1:
+        st.metric("Up Chance", f"{overall_up}%")
+    with s2:
+        st.metric("Down Chance", f"{overall_down}%")
+    with s3:
+        st.metric("Signal", signal_from_score(avg))
 
 time.sleep(30)
 st.rerun()

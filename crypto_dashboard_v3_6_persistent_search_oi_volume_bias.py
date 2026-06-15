@@ -138,7 +138,7 @@ def render_html(html, height=800):
     @media(max-width:900px){.main{grid-template-columns:1fr!important}.searchGrid{grid-template-columns:1fr!important}.liqGrid{grid-template-columns:1fr!important}table{font-size:.82rem!important}.coin{min-height:auto!important}}
     </style>
     """
-    components.html(inner_css + html, height=height, scrolling=False)
+    components.html(inner_css + html, height=height, scrolling=true)
 
 def jget(url, params=None, timeout=8):
     try:
